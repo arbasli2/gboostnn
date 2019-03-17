@@ -8,6 +8,7 @@ One of the diffuculties of using NN (Keras, with a tensorflow backend) is that a
 ## TODO list
 
 TODO add usage example
+
 TODO add unit test
 
 TODO add feature: for more flexibility to pass the base network as an argument (if it still remains compatible with scikit-learn).

@@ -175,6 +175,7 @@ class Nngboost(BaseEstimator, RegressorMixin):
             r2_val_list.append(r2_score(y_val, y2_val))
             print('r2 validation: ', r2_val_list[-1])
         self.n_estimators_best_ = np.argmax(r2_val_list) + 1
+        self.r2_val_list_ = r2_val_list
         print('best number of estimators based on validation r2: ', self.n_estimators_best_)
         print('best validation r2: ', r2_val_list[self.n_estimators_best_-1])
         return self
@@ -183,7 +184,7 @@ class Nngboost(BaseEstimator, RegressorMixin):
         return self.lr * 2**(-itr / self.lr_decay_const)
     
     def predict(self, X):
-        check_is_fitted(self, ['nn_', 'n_estimators_best_'])
+        check_is_fitted(self, ['nn_', 'n_estimators_best_','r2_val_list_'])
         #X = check_array(X)
         if len(X.shape) != 3 :
             raise ValueError('the dimension of input must be 3 ')
@@ -222,7 +223,8 @@ def load_model(model_name):
         if k != 'nn_':
             p.update({k:v})
     s = set(p)
-    s.add('n_estimators_best_')
+    s.add('n_estimators_best_') # we cannot add these memebers to the constructor (because they have to exist only after fit. scikit-learn related)
+    s.add('r2_val_list_')
     if s != set(parameters):
         print('parameters as set is: ', set(parameters))
         raise ValueError('the saved nngboost model has different attributes than the current version of the model class')

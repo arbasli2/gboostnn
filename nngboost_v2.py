@@ -147,7 +147,9 @@ class Nngboost(BaseEstimator, RegressorMixin):
         self.device = device
         
     def fit(self, X, y, X_val, y_val):
-        callback = [EarlyStopping(patience=10, verbose=1)]
+        patience=5 # patience for early stopping
+        callback = [EarlyStopping(patience=patience, verbose=1)]
+        print(f'early stopping with patience {patience}')
         self.nn_:List[Sequential] = []
         self.graph_:List[tf.Graph] = []
         self.sess_:List[tf.Session] = []
@@ -183,22 +185,26 @@ class Nngboost(BaseEstimator, RegressorMixin):
     def lr_updated(self, itr):
         return self.lr * 2**(-itr / self.lr_decay_const)
     
-    def predict(self, X):
+    def predict(self, X, n_estimators=None):
         check_is_fitted(self, ['nn_', 'n_estimators_best_','r2_val_list_'])
         #X = check_array(X)
+        if not n_estimators:
+            n_estimators = self.n_estimators_best_
+        print(f'using {n_estimators} for prediction')
         if len(X.shape) != 3 :
             raise ValueError('the dimension of input must be 3 ')
         #with tf.Session(graph=self.graph_[0]):
         with self.graph_[0].as_default():
           with self.sess_[0].as_default():
             y = self.nn_[0].predict(X)
-        for i in range(1, self.n_estimators_best_):
+        for i in range(1, n_estimators):
             #with  tf.Session(graph=self.graph_[i]):
             with self.graph_[i].as_default():
               with self.sess_[i].as_default():
                 y+=  self.lr_updated(i) * self.nn_[i].predict(X)
         return y
     def save(self, model_name):
+    # TODO: add argument that says only save the n_estimators_best_ of estimators
         if not os.path.isdir(model_name):
             os.mkdir(model_name)
         for i in range(len(self.nn_)):
@@ -215,6 +221,7 @@ class Nngboost(BaseEstimator, RegressorMixin):
             pickle.dump(parameters, f)
 
 def load_model(model_name):
+    # TODO: add argument that says only load the n_estimators_best_ of estimators
     model = Nngboost()
     with open(model_name+'/parameters.pkl', 'rb') as f:
             parameters = pickle.load(f)
@@ -223,7 +230,7 @@ def load_model(model_name):
         if k != 'nn_':
             p.update({k:v})
     s = set(p)
-    s.add('n_estimators_best_') # we cannot add these memebers to the constructor (because they have to exist only after fit. scikit-learn related)
+    s.add('n_estimators_best_') # we cannot add these memebers to the constructor (because they have to exist only after fit)  so we add them here
     s.add('r2_val_list_')
     if s != set(parameters):
         print('parameters as set is: ', set(parameters))
